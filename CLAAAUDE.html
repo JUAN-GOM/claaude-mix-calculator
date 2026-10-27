@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLAAAUDE - Diseño de Mezclas ACI y NTC 1926</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f3f3f3;color:#222;font-size:14px;padding:10px;}
+  h1{margin:0;padding:10px 16px;background:#06784f;color:#fff;font-size:20px;text-align:center;}
+  h2{font-size:15px;color:#06784f;margin:0 0 8px;border-bottom:2px solid #06784f;padding-bottom:3px;}
+  .res{background:#fff;padding:12px 16px;border-bottom:3px solid #fbb633;overflow-x:auto;overflow-y:auto;min-height:150px;}
+  .cards{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;justify-content:center;}
+  .card{background:#eaf6f0;border:1px solid #9fd4bb;border-radius:6px;padding:6px 10px;min-width:110px;text-align:center;}
+  .card b{display:block;font-size:18px;color:#06784f;}
+  .card span{font-size:12px;color:#555;}
+  table{border-collapse:collapse;width:100%;background:#fff;max-width:100%;overflow-x:auto;}
+  th,td{border:1px solid #ccc;padding:4px 8px;text-align:right;}
+  th{background:#06784f;color:#fff;}
+  td:first-child,th:first-child{text-align:left;}
+  .wrap{display:flex;flex-wrap:wrap;gap:12px;padding:12px 0;justify-content:center;}
+  .box{background:#fff;border:1px solid #ccc;border-radius:6px;padding:10px 12px;flex:1 1 300px;min-width:260px;}
+  label{display:flex;flex-direction:column;gap:4px;margin:4px 0;}
+  label span{font-size:13px;color:#555;}
+  input,select{width:100%;max-width:180px;padding:4px;border:1px solid #999;border-radius:3px;font-size:14px;}
+  .warn{color:#b00000;font-weight:bold;margin:4px 0;}
+  .note{font-size:12px;color:#666;margin:4px 0;}
+  @media (max-width: 600px) {
+    .wrap{flex-direction:column;}
+    .box{flex:1 1 auto;min-width:unset;}
+    input,select{max-width:100%;}
+  }
+</style>
+</head>
+<body>
+<h1>CLAAAUDE — Diseño de Mezclas (Método ACI + NTC 1926)</h1>
+
+<!-- ======================= RESULTADOS ======================= -->
+<div class="res">
+  <div class="cards" id="cards"></div>
+  <div id="avisos"></div>
+  <table id="tabla"></table>
+  <p class="note">Masas en kg por m³ de concreto. "seco" = agregado seco; "sss" = saturado superficialmente seco; "húmedo" = corregido por humedad (lo que se pesa en obra).</p>
+</div>
+
+<!-- ======================= ENTRADAS ======================= -->
+<div class="wrap">
+
+  <div class="box">
+    <h2>Resistencia y asentamiento</h2>
+    <label>f'c especificada (MPa)
+      <input id="fc" type="number" step="any" value="21">
+    </label>
+    <label>f'cr manual (vacío = auto)
+      <input id="fcrMan" type="number" step="any">
+    </label>
+    <label>Asentamiento s (mm)
+      <input id="s" type="number" step="any" value="75">
+    </label>
+    <label>Tamaño máximo TM (mm)
+      <select id="tm">
+        <option value="0">9,5</option><option value="1">12,5</option><option value="2">19</option>
+        <option value="3" selected>25</option><option value="4">37,5</option><option value="5">50</option>
+        <option value="6">75</option><option value="7">150</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="box">
+    <h2>Agua y aire</h2>
+    <label>Método agua
+      <select id="wMet"><option value="tabla">Tabla ACI</option><option value="gir">W = 218.8 s^0.1 / TM^0.18</option></select>
+    </label>
+    <label>Fila tabla (asentamiento)
+      <select id="wFila"><option value="0">25 a 50 mm</option><option value="1" selected>75 a 100 mm</option><option value="2">150 a 175 mm</option></select>
+    </label>
+    <label>Agua manual kg/m³ (vacío = auto)
+      <input id="wMan" type="number" step="any">
+    </label>
+    <label>Aire manual % (vacío = tabla)
+      <input id="aMan" type="number" step="any">
+    </label>
+  </div>
+
+  <div class="box">
+    <h2>Relación A/C</h2>
+    <label>Método
+      <select id="acMet">
+        <option value="aci">Tabla ACI (interpolada)</option>
+        <option value="aso">Tabla ASOCRETO (interpolada)</option>
+        <option value="k">K1 y K2 (Giraldo)</option>
+      </select>
+    </label>
+    <label>Resistencia cemento (K1, K2)
+      <select id="kRow">
+        <option value="75,14.5">&lt; 20 MPa (75 ; 14.5)</option>
+        <option value="90,13">25-30 MPa (90 ; 13.0)</option>
+        <option value="110,12.5" selected>30-35 MPa (110 ; 12.5)</option>
+        <option value="130,11">35-40 MPa (130 ; 11.0)</option>
+        <option value="145,10.5">&gt; 40 MPa (145 ; 10.5)</option>
+      </select>
+    </label>
+    <label>Máx. A/C por exposición
+      <select id="acLim">
+        <option value="">Sin límite</option>
+        <option value="0.45">Delgada, hielo/deshielo (0,45)</option>
+        <option value="0.40">Delgada, mar/sulfatos (0,40)</option>
+        <option value="0.50">Otra, hielo/deshielo (0,50)</option>
+        <option value="0.45">Otra, mar/sulfatos (0,45)</option>
+      </select>
+    </label>
+    <label>A/C manual (vacío = auto)
+      <input id="acMan" type="number" step="any">
+    </label>
+  </div>
+
+  <div class="box">
+    <h2>Agregado grueso</h2>
+    <label>Método Vgsc
+      <select id="gMet"><option value="tabla">Tabla 2.5 (interpolada)</option><option value="ec">Ecuaciones 2° grado</option></select>
+    </label>
+    <label>Módulo de finura MF
+      <input id="mf" type="number" step="any" value="2.8">
+    </label>
+    <label>Vgsc manual m³ (vacío = auto)
+      <input id="vgMan" type="number" step="any">
+    </label>
+    <label>MUsc grueso (kg/m³)
+      <input id="mu" type="number" step="any" value="1600">
+    </label>
+  </div>
+
+  <div class="box">
+    <h2>Agregado fino y Densidades</h2>
+    <label>Método
+      <select id="fMet"><option value="peso">7.1 Método del peso</option><option value="vol">7.2 Volumen absoluto</option></select>
+    </label>
+    <label>DH manual kg/m³ (vacío = tabla)
+      <input id="dhMan" type="number" step="any">
+    </label>
+    <label>Densidad cemento (g/cm³, NTC 1926 = 3.15)
+      <input id="dc" type="number" step="any" value="3.15">
+    </label>
+    <label>Densidad sss grueso (g/cm³)
+      <input id="dg" type="number" step="any" value="2.65">
+    </label>
+    <label>Densidad sss fino (g/cm³)
+      <input id="df" type="number" step="any" value="2.6">
+    </label>
+  </div>
+
+  <div class="box">
+    <h2>Humedades (%)</h2>
+    <label>h<sub>ag</sub> absorción grueso
+      <input id="hag" type="number" step="any" value="1">
+    </label>
+    <label>h<sub>af</sub> absorción fino
+      <input id="haf" type="number" step="any" value="2">
+    </label>
+    <label>h<sub>g</sub> humedad natural grueso
+      <input id="hg" type="number" step="any" value="0.5">
+    </label>
+    <label>h<sub>f</sub> humedad natural fino
+      <input id="hf" type="number" step="any" value="4">
+    </label>
+  </div>
+
+  <div class="box">
+    <h2>Ensayo NTC 1926 (Masa unitaria)</h2>
+    <label>M<sub>c</sub> recipiente + concreto (kg)
+      <input id="mc" type="number" step="any">
+    </label>
+    <label>M<sub>m</sub> recipiente vacío (kg)
+      <input id="mm" type="number" step="any">
+    </label>
+    <label>V<sub>m</sub> volumen recipiente (m³)
+      <input id="vm" type="number" step="any">
+    </label>
+    <p class="note">Si llenas M<sub>c</sub>, M<sub>m</sub> y V<sub>m</sub>, se calcula D = (M<sub>c</sub> − M<sub>m</sub>)/V<sub>m</sub> como DH<sub>R</sub>.</p>
+  </div>
+
+  <div class="box">
+    <h2>Corrección asent. y densidad (Mezcla 2)</h2>
+    <label>Volumen mezcla prueba Vs / Y<sub>d</sub> (m³)
+      <input id="vs" type="number" step="any" value="1">
+    </label>
+    <label>Asentamiento medido (mm)
+      <input id="sMed" type="number" step="any">
+    </label>
+    <label>Densidad medida DH<sub>R</sub> / D (kg/m³)
+      <input id="dhr" type="number" step="any">
+    </label>
+    <p class="note">Masas de prueba (vacío = Mezcla 1 × Vs):</p>
+    <label>W agua (kg)
+      <input id="wb" type="number" step="any">
+    </label>
+    <label>C cemento C<sub>b</sub> (kg)
+      <input id="cb" type="number" step="any">
+    </label>
+    <label>G grueso en la prueba (kg)
+      <input id="gb" type="number" step="any">
+    </label>
+    <label>F fino en la prueba (kg)
+      <input id="fb" type="number" step="any">
+    </label>
+    <label>Fórmula W' en R = (W'+C+G+F)/DH<sub>R</sub>
+      <select id="wpModo">
+        <option value="guia">Literal Guía: W' = W + 2·n</option>
+        <option value="vs">Escalada a Vs: W' = W + 2·n·Vs</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="box">
+    <h2>Corrección por resistencia (Mezcla 3)</h2>
+    <label>f'c de cilindros (MPa, separados por ;)
+      <input id="fcs" type="text" placeholder="20,5; 21; 22">
+    </label>
+    <label>t (en v = (fc<sub>max</sub>-fc<sub>min</sub>)/(t·fc<sub>prom</sub>))
+      <input id="t" type="number" step="any" value="1">
+    </label>
+    <p class="note">Usa K1 de la caja "Relación A/C" y W/C de la mezcla de prueba.</p>
+  </div>
+
+</div>
+
+<script>
+// ---------- TABLAS DE LA GUÍA ----------
+const TM   = [9.5,12.5,19,25,37.5,50,75,150];
+const AGUA = [[208.1,199.2,187.3,178.4,163.5,154.6,130.8,113.0],
+              [228.9,217.0,202.2,193.2,178.4,169.5,145.7,124.9],
+              [243.8,229.0,214.1,202.2,187.3,178.4,160.5,NaN]];
+const AIRE = [3,2.5,2,1.5,1,0.5,0.3,0.2];
+const AC_F = [14,21,28,35,42], AC_ACI = [0.82,0.68,0.57,0.48,0.41];
+const ASO_F = [14,21,28,35],   AC_ASO = [0.72,0.57,0.47,0.40];
+const MFs = [2.4,2.6,2.8,3.0];
+const VG = [[0.50,0.48,0.46,0.44],[0.59,0.57,0.55,0.53],[0.66,0.64,0.62,0.59],[0.71,0.69,0.67,0.65],
+            [0.75,0.73,0.71,0.69],[0.78,0.76,0.74,0.72],[0.82,0.80,0.78,0.76],[0.87,0.85,0.83,0.81]];
+const VG_EC = {1:[0.7275,0.0094,-0.0281],2:[0.7926,-0.0131,-0.0182],3:[0.7981,0.0350,-0.0294],
+               4:[0.8435,-0.0078,-0.0136],5:[0.8211,0.0246,-0.0187]};
+const DH = [2283,2312,2354,2384,2419,2449,2497,2532];
+
+// ---------- UTILIDADES ----------
+const $ = id => document.getElementById(id);
+const num = id => { const v = $(id).value.trim().replace(',', '.'); return v === '' ? null : parseFloat(v); };
+const f = (x, d = 2) => (x === null || x === undefined || !isFinite(x)) ? '—' : x.toFixed(d);
+function interp(x, xs, ys) {
+  let i = 0;
+  while (i < xs.length - 2 && x > xs[i + 1]) i++;
+  return ys[i] + (ys[i + 1] - ys[i]) * (x - xs[i]) / (xs[i + 1] - xs[i]);
+}
+function humedad(W, F, G, h) {
+  return { Wh: W + F * (h.haf - h.hf) / 100 + G * (h.hag - h.hg) / 100,
+           Fh: F * (1 + h.hf / 100), Gh: G * (1 + h.hg / 100) };
+}
+
+function calc() {
+  const av = [];
+  const fc = num('fc'), s = num('s'), it = +$('tm').value, tm = TM[it];
+  const h = { hag: num('hag') || 0, haf: num('haf') || 0, hg: num('hg') || 0, hf: num('hf') || 0 };
+  let fcr = fc < 21 ? fc + 7 : (fc <= 35 ? fc + 8.3 : 1.1 * fc + 5);
+  if (num('fcrMan') !== null) fcr = num('fcrMan');
+  let W = $('wMet').value === 'tabla' ? AGUA[+$('wFila').value][it] : 218.8 * Math.pow(s, 0.1) / Math.pow(tm, 0.18);
+  if (num('wMan') !== null) W = num('wMan');
+  let aire = num('aMan') !== null ? num('aMan') : AIRE[it];
+  const [K1, K2] = $('kRow').value.split(',').map(Number);
+  let ac, m = $('acMet').value;
+  if (m === 'aci') ac = interp(fcr, AC_F, AC_ACI);
+  else if (m === 'aso') ac = interp(fcr, ASO_F, AC_ASO);
+  else ac = Math.log(K1 / fcr) / Math.log(K2);
+  if (m === 'aci' && (fcr < 14 || fcr > 42)) av.push("f'cr fuera de la tabla ACI (14-42 MPa): A/C extrapolada.");
+  if (m === 'aso' && (fcr < 14 || fcr > 35)) av.push("f'cr fuera de la tabla ASOCRETO (14-35 MPa): A/C extrapolada.");
+  const lim = $('acLim').value;
+  if (lim !== '' && ac > +lim) { av.push('A/C limitada por exposición a ' + lim); ac = +lim; }
+  if (num('acMan') !== null) ac = num('acMan');
+  const C = W / ac;
+  const mf = num('mf');
+  let vg;
+  if ($('gMet').value === 'tabla') vg = interp(mf, MFs, VG[it]);
+  else if (VG_EC[it]) { const e = VG_EC[it]; vg = e[0] + e[1] * mf + e[2] * mf * mf; }
+  else { vg = interp(mf, MFs, VG[it]); av.push('No hay ecuación para TM = ' + tm + ' mm; se usó la Tabla 2.5.'); }
+  if (num('vgMan') !== null) vg = num('vgMan');
+  const G1 = vg * num('mu');
+  const G1sss = G1 * (1 + h.hag / 100);
+  let F1sss, DH1;
+  if ($('fMet').value === 'peso') {
+    DH1 = num('dhMan') !== null ? num('dhMan') : DH[it];
+    F1sss = DH1 - W - C - G1sss;
+  } else {
+    const Vw = W / 1000, Va = aire / 100, Vc = C / (num('dc') * 1000), Vg = G1sss / (num('dg') * 1000);
+    const Vf = 1 - Vw - Va - Vc - Vg;
+    F1sss = Vf * num('df') * 1000;
+    DH1 = W + C + F1sss + G1sss;
+  }
+  const F1 = F1sss / (1 + h.haf / 100);
+  if (F1sss <= 0) av.push('El agregado fino da negativo: revise los datos.');
+  const mezclas = [{ n: 'Mezcla 1 (diseño)', W, C, G: G1, Gsss: G1sss, F: F1, Fsss: F1sss, DH: W + C + F1sss + G1sss, ac }];
+  const Mc = num('mc'), Mm = num('mm'), Vm = num('vm');
+  const D_ntc = (Mc !== null && Mm !== null && Vm) ? (Mc - Mm) / Vm : null;
+  const Vs = num('vs'), sMed = num('sMed');
+  const DHR = num('dhr') !== null ? num('dhr') : D_ntc;
+  let R = null, Wp = null, Ry = null, C_ntc = null, T_ntc = null, A_ntc = null;
+  if (Vs && DHR) {
+    const Wb = num('wb') ?? W * Vs, Cb = num('cb') ?? C * Vs, Gb = num('gb') ?? G1sss * Vs, Fb = num('fb') ?? F1sss * Vs;
+    const nn = sMed !== null ? (s - sMed) / 10 : 0;
+    const factorVs = $('wpModo').value === 'vs' ? Vs : 1;
+    Wp = Wb + 2.0 * nn * factorVs;
+    R = (Wp + Cb + Gb + Fb) / DHR;
+    Ry = R / Vs;
+    C_ntc = Cb / R;
+    const Gsss_b = num('gb') !== null ? Gb / (1 + h.hg / 100) * (1 + h.hag / 100) : G1sss * Vs;
+    const Fsss_b = num('fb') !== null ? Fb / (1 + h.hf / 100) * (1 + h.haf / 100) : F1sss * Vs;
+    const Wnet_b = Wp - (Gsss_b - Gb) - (Fsss_b - Fb);
+    const V_ntc = Wnet_b/1000 + Cb/(num('dc')*1000) + Gsss_b/(num('dg')*1000) + Fsss_b/(num('df')*1000);
+    T_ntc = (Wp + Cb + Gb + Fb) / V_ntc;
+    A_ntc = ((T_ntc - DHR) / T_ntc) * 100;
+    if (sMed !== null && Math.abs(s - sMed) <= 10) av.push('Asentamiento dentro de ±10 mm: la estimación inicial de agua es adecuada.');
+    const W2 = Wp / R, C2 = W2 / ac;
+    const G2 = (Gb / (1 + h.hg / 100)) / R; // G2 = (Gb/(1+hg/100))/R
+    const G2sss = G2 * (1 + h.hag / 100);
+    const F2sss = DHR - W2 - C2 - G2sss;
+    const F2 = F2sss / (1 + h.haf / 100);
+    mezclas.push({ n: 'Mezcla 2 (asent./densidad)', W: W2, C: C2, G: G2, Gsss: G2sss, F: F2, Fsss: F2sss, DH: W2 + C2 + F2sss + G2sss, ac });
+    const fcs = $('fcs').value.split(';').map(x => parseFloat(x.replace(',', '.'))).filter(x => isFinite(x));
+    if (fcs.length) {
+      const prom = fcs.reduce((a,b)=>a+b,0)/fcs.length;
+      const v = (Math.max(...fcs)-Math.min(...fcs))/(num('t')*prom);
+      if (v>0.04) av.push('Coeficiente de variación v = '+f(v*100)+'% > 4%: promedio no confiable, repetir prueba.');
+      const lnK2s = (Math.log(K1)-Math.log(prom))/ac;
+      const acS = (Math.log(K1)-Math.log(fcr))/lnK2s;
+      const W3 = W2, C3 = W3 / acS, G3 = G2, G3sss = G3 * (1 + h.hag / 100);
+      const F3sss = DHR - W3 - C3 - G3sss, F3 = F3sss / (1 + h.haf / 100);
+      mezclas.push({ n: 'Mezcla 3 (resistencia)', W: W3, C: C3, G: G3, Gsss: G3sss, F: F3, Fsss: F3sss, DH: W3 + C3 + F3sss + G3sss, ac: acS });
+      mezclas.fcprom = prom; mezclas.v = v; mezclas.K2s = Math.exp(lnK2s); mezclas.lnK2s = lnK2s;
+    }
+  }
+  const cards = [
+    ["f'cr (MPa)", f(fcr,1)], ['Agua W (kg/m³)', f(W,1)], ['Aire (%)', f(aire,1)], ['A/C', f(ac,3)],
+    ['Cemento C (kg/m³)', f(C,1)], ['Vgsc (m³)', f(vg,3)], ['G1 seco (kg/m³)', f(G1,1)],
+    ['F1 seco (kg/m³)', f(F1,1)], ['DH diseño (kg/m³)', f(DH1,0)], ["W' prueba (kg)", f(Wp,2)],
+    ['D / DH_R (kg/m³)', f(DHR,1)], ['R (m³)', f(R,4)], ['R rend. rel.', f(Ry,3)],
+    ['Aire NTC 1926 (%)', f(A_ntc,2)], ['T sin aire (kg/m³)', f(T_ntc,1)]
+  ];
+  if (mezclas.fcprom) cards.push(['fc prom (MPa)', f(mezclas.fcprom,2)], ['v (%)', f(mezclas.v*100,2)], ['ln(*K2) / *K2', f(mezclas.lnK2s,3)+' / '+f(mezclas.K2s,2)]);
+  $('cards').innerHTML = cards.map(c=>`<div class="card"><span>${c[0]}</span><b>${c[1]}</b></div>`).join('');
+  $('avisos').innerHTML = av.map(a=>`<p class="warn">⚠ ${a}</p>`).join('');
+  const filas = [
+    ['A/C', x=>f(x.ac,3)], ['Agua W', x=>f(x.W,1)], ['Cemento C', x=>f(x.C,1)],
+    ['Grueso G seco', x=>f(x.G,1)], ['Grueso G sss', x=>f(x.Gsss,1)],
+    ['Fino F seco', x=>f(x.F,1)], ['Fino F sss', x=>f(x.Fsss,1)],
+    ['Densidad DH = W + C + Fsss + Gsss', x=>f(x.DH,1)],
+    ['Agua corregida Wh', x=>f(humedad(x.W,x.F,x.G,h).Wh,1)],
+    ['Fino húmedo Fh', x=>f(humedad(x.W,x.F,x.G,h).Fh,1)],
+    ['Grueso húmedo Gh', x=>f(humedad(x.W,x.F,x.G,h).Gh,1)],
+    ['Proporción C : F : G (seco)', x=>'1 : '+f(x.F/x.C)+' : '+f(x.G/x.C)],
+    ['Para Vs = '+(Vs||0)+' m³ (húmedo): W / C / F / G', x=>{const k=humedad(x.W,x.F,x.G,h);return [k.Wh,x.C,k.Fh,k.Gh].map(y=>f(y*(Vs||0),2)).join(' / ');}]
+  ];
+  $('tabla').innerHTML = '<tr><th>kg/m³</th>'+mezclas.map(x=>`<th>${x.n}</th>`).join('')+'</tr>'+filas.map(r=>`<tr><td>${r[0]}</td>`+mezclas.map(x=>`<td>${r[1](x)}</td>`).join('')+'</tr>').join('');
+}
+
+document.querySelectorAll('input,select,button').forEach(e=>e.addEventListener('input',calc));
+$('#calcBtn').addEventListener('click',calc);
+window.addEventListener('load',calc);
+</script>
+</body>
+</html>
